@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
@@ -31,13 +33,48 @@ namespace ddsb_sdk
         }
 
         /// <summary>
+        /// Build the query for a request.
+        /// </summary>
+        /// <param name="url">The url to shorten.</param>
+        /// <param name="customId">The custom identifier of dd.sb url.</param>
+        /// <param name="password">The password of this shortened url.</param>
+        /// <returns>The query in name/value pair.</returns>
+        protected string BuildQuery(string url, string customId, string password)
+        {
+            List<string> pair = new List<string>();
+
+            if (url != null)
+            {
+                pair = pair.Append($"url={url}").ToList();
+            }
+            else
+            {
+                throw ThrowWhenFailed("10000");
+            }
+
+            if (customId != null)
+            {
+                pair = pair.Append($"cust={customId}").ToList();
+            }
+
+            if (password != null)
+            {
+                pair = pair.Append($"pass={password}").ToList();
+            }
+
+            return string.Join("&", pair);
+        }
+        /// <summary>
         /// Fetch the response from dd.sb
         /// </summary>
-        /// <param name="url">The url to shorten</param>
+        /// <param name="url">The url to shorten.</param>
+        /// <param name="customId">The custom identifier of dd.sb url.</param>
+        /// <param name="password">The password of this shortened url.</param>
         /// <returns>The response in <see cref="DDSBRawResponse"/></returns>
-        protected async Task<DDSBRawResponse> GetResponse(string url)
+        protected async Task<DDSBRawResponse> GetResponse(string url, string customId, string password)
         {
-            HttpResponseMessage response = await client.GetAsync($"https://dd.sb/api.php?url={url}");
+            string toRequest = $"https://dd.sb/api.php?{BuildQuery(url, customId, password)}";
+            HttpResponseMessage response = await client.GetAsync(toRequest);
             return JsonConvert.DeserializeObject<DDSBRawResponse>(
                 await response.Content.ReadAsStringAsync()
             );
@@ -80,7 +117,7 @@ namespace ddsb_sdk
         /// <returns>See <see cref="DDSBInfo"/></returns>
         public async Task<DDSBInfo> Generate()
         {
-            DDSBRawResponse resp = await GetResponse(Url);
+            DDSBRawResponse resp = await GetResponse(Url, CustomId, Password);
             Exception error = ThrowWhenFailed(resp.Error);
 
             if (error != null)
